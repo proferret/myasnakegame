@@ -41,16 +41,16 @@ void handle_keys(Snake *snake, GameState *state) {
         *state = PAUSE;
     } else if (IsKeyDown(KEY_RIGHT) && snake->direction != LEFT) {
         snake->direction = RIGHT;
-        snake->has_moved = true; // Add this line
+        snake->has_moved = true;
     } else if (IsKeyDown(KEY_LEFT) && snake->direction != RIGHT) {
         snake->direction = LEFT;
-        snake->has_moved = true; // Add this line
+        snake->has_moved = true;
     } else if (IsKeyDown(KEY_UP) && snake->direction != DOWN) {
         snake->direction = UP;
-        snake->has_moved = true; // Add this line
+        snake->has_moved = true;
     } else if (IsKeyDown(KEY_DOWN) && snake->direction != UP) {
         snake->direction = DOWN;
-        snake->has_moved = true; // Add this line
+        snake->has_moved = true;
     }
 }
 
@@ -69,10 +69,21 @@ void handle_keys(Snake *snake, GameState *state) {
  */
 void update_game(Snake *snake, Apple *apple, GameState *state) {
     Vector2 *snake_head = &snake->pos[0];
+    Vector2 prev_pos[100];  // Store previous positions of all snake segments
+
+    // Save current positions before any updates
+    for (int i = 0; i < snake->length; i++) {
+        prev_pos[i] = snake->pos[i];
+    }
 
     // Check if the snake has moved
     if (snake->has_moved) {
-        // Update the snake's position based on its direction
+        // Move the snake's body first (update all segments except the head)
+        for (int i = snake->length - 1; i > 0; i--) {
+            snake->pos[i] = prev_pos[i - 1];
+        }
+
+        // Update the head's position based on its direction
         switch (snake->direction) {
             case UP:
                 snake_head->y -= 1;
@@ -89,18 +100,6 @@ void update_game(Snake *snake, Apple *apple, GameState *state) {
             default:
                 break;
         }
-    }
-
-    // Check if the snake has eaten the apple
-    if (snake_head->x == apple->pos.x && snake_head->y == apple->pos.y) {
-        // Reset the apple timer and play the eating sound
-        start_timer(&apple->timer, apple->timer.lifetime);
-        PlaySound(apple->eating_sound);
-        // Increase the snake's score and length
-        snake->score++;
-        snake->length++;
-        // Mark the apple as eaten
-        apple->eaten = true;
     }
 
     // Check if the snake has hit a wall or itself
@@ -122,9 +121,23 @@ void update_game(Snake *snake, Apple *apple, GameState *state) {
         }
     }
 
-    // Move the snake's body
-    for (int i = snake->length - 1; i > 0; i--) {
-        snake->pos[i] = snake->pos[i - 1];
+    // Check if the snake has eaten the apple
+    if (snake_head->x == apple->pos.x && snake_head->y == apple->pos.y) {
+        // Reset the apple timer and play the eating sound
+        start_timer(&apple->timer, apple->timer.lifetime);
+        PlaySound(apple->eating_sound);
+        // Increase the snake's score and length
+        snake->score++;
+
+        // Ensure we don't exceed our array bounds
+        if (snake->length + 1 < 100) {
+            // Add new segment at the end (copy last position)
+            snake->pos[snake->length] = prev_pos[snake->length - 1];
+            snake->length++;
+        }
+
+        // Mark the apple as eaten
+        apple->eaten = true;
     }
 
     // Update the apple timer
